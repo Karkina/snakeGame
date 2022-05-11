@@ -69,10 +69,18 @@ toggleGameLoop ({ gameStarted } as model) =
 directionSnake : Direction -> Model -> (Model,Cmd Msg)
 directionSnake directionClick model =
   case (directionClick,model.player.direction) of
+    (Down,_) -> let snakeUpdate ={positions=model.player.positions,direction=Down} in
+             {model | player = snakeUpdate}
+             |> Update.none
+    (Left,_) -> let snakeUpdate ={positions=model.player.positions,direction=Left} in
+             {model | player = snakeUpdate}
+             |> Update.none
+    (Right,_) -> let snakeUpdate ={positions=model.player.positions,direction=Right} in
+             {model | player = snakeUpdate}
+             |> Update.none
     (Up,_) -> let snakeUpdate ={positions=model.player.positions,direction=Up} in
              {model | player = snakeUpdate}
              |> Update.none
-    (_,_) -> Update.none model
 
 
 movingSnake : Model -> Model
@@ -83,14 +91,25 @@ movingSnake model =
 movingSnakeHelp : Model -> List Int -> Model
 movingSnakeHelp model snakePositions=
   case (model.player.direction,snakePositions) of
-    (Up,head::tail) -> let snake = (head+40)::List.take (List.length snakePositions-1) snakePositions in
-                       let updateSnake = {positions = snake ,direction=Up} in
-                       let debugTest = Debug.log "Taille Serpent"  snake in
+    (Down,head::tail) -> let snake = (head+40)::List.take (List.length snakePositions-1) snakePositions in
+                       let updateSnake = {positions = List.reverse snake ,direction=Down} in
+                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
                        { model | player = updateSnake}
-                       
-    (_,head::tail) -> let updateSnake = {positions = (head+40)::tail,direction=Up} in
-                      { model | player = updateSnake}
-    (_,_) -> model
+    (Up,head::tail) -> let snake = (head-40)::List.take (List.length snakePositions-1) snakePositions in
+                       let updateSnake = {positions = List.reverse snake ,direction=Up} in
+                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
+                       { model | player = updateSnake}
+
+    (Left,head::tail) -> let snake = (head-1)::List.take (List.length snakePositions-1) snakePositions in
+                       let updateSnake = {positions = List.reverse snake ,direction=Left} in
+                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
+                       { model | player = updateSnake}
+    (Right,head::tail) -> let snake = (head+1)::List.take (List.length snakePositions-1) snakePositions in
+                       let updateSnake = {positions = List.reverse snake ,direction=Right} in
+                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
+                       { model | player = updateSnake}
+            
+    (_,[]) -> model
 
 
 updatePlateau : Model -> Model
