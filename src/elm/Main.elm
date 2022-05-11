@@ -20,18 +20,16 @@ type Direction = Up
 type alias Snake = { positions : List Int,
                     direction : Direction
                   }
-
-snakeDepartInit : Model -> Model
-snakeDepartInit model =
-  let snake = {positions= [250],direction = Up} in
-  {model | player=snake}
+type alias Cellule = { x : Int
+                      ,y : Int
+                      , coloredSquare : Int
+                  }
 
 type alias Model =
   { gameStarted : Bool
   , lastUpdate : Int
   , time : Int
-  , coloredSquare : Int
-  , cellsBoard : List (Html Msg)
+  , cellsBoard : List (Cellule)
   , sizeBoard : Int
   , player : Snake
   }
@@ -39,7 +37,7 @@ type alias Model =
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 [] 40 (Snake [1500,50,150,250] Up)
+  |> \time -> Model False time time [] 40 (Snake [251,252,253] Up)
   |> gameCase 
   |> Update.none
 
@@ -85,26 +83,38 @@ movingSnake model =
 movingSnakeHelp : Model -> List Int -> Model
 movingSnakeHelp model snakePositions=
   case (model.player.direction,snakePositions) of
-    (Up,head::tail) -> let updateSnake = {positions = (head+40)::tail,direction=Up} in
+    (Up,head::tail) -> let snake = (head+40)::List.take (List.length snakePositions-1) snakePositions in
+                       let updateSnake = {positions = snake ,direction=Up} in
+                       let debugTest = Debug.log "Taille Serpent"  snake in
                        { model | player = updateSnake}
+                       
     (_,head::tail) -> let updateSnake = {positions = (head+40)::tail,direction=Up} in
                       { model | player = updateSnake}
     (_,_) -> model
 
+
 updatePlateau : Model -> Model
 updatePlateau model =
-  updatePlateauHelp model model.player.positions (model.sizeBoard*model.sizeBoard)
+  updatePlateauHelp model (List.reverse model.cellsBoard) model.player.positions (model.sizeBoard*model.sizeBoard) []
 
-updatePlateauHelp : Model -> List Int -> Int -> Model
-updatePlateauHelp model player count=
-  case (model.cellsBoard,player,count) of
-  (_,_,0) -> model
-  ([],_,_) -> model
-  (_,[],_) -> model
-  (head::tail,headSnake::tailSnake,_) -> let cellColor = cell 0 model.coloredSquare in
-                                         let noCellColor = cell 1 model.coloredSquare in
-                                if headSnake == count then updatePlateauHelp ({model | cellsBoard = cellColor::model.cellsBoard}) tailSnake (count-1)
-                                else updatePlateauHelp ({model | cellsBoard = noCellColor::model.cellsBoard}) player (count-1)
+updatePlateauHelp : Model -> List Cellule -> List Int -> Int ->List Cellule -> Model
+updatePlateauHelp model cellsBoard player count acc=
+  case (cellsBoard,player,count) of
+  (_,_,0) -> {model| cellsBoard =  acc}
+  ([],_,_) -> {model| cellsBoard = acc}
+  (head::tail,[],_) -> 
+                    let newCell = {x = head.x,y = head.y,coloredSquare=0} in
+                    updatePlateauHelp model tail [] count (newCell::acc)
+  (head::tail,headSnake::tailSnake,_) ->
+     let index = head.x + head.y*40 in
+     let darkCell = {x = head.x,y = head.y,coloredSquare=1} in
+     let lightCell = {x = head.x,y = head.y,coloredSquare=0} in
+     if headSnake == index then 
+        let hello = Debug.log "index :" index in
+        let snakeTest = Debug.log "snake:" headSnake in 
+        updatePlateauHelp model tail tailSnake (count-1) (darkCell::acc)
+     else updatePlateauHelp model tail player (count-1) (lightCell::acc)
+
   
 
 
@@ -125,10 +135,9 @@ keyDown key model =
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let time_ = Time.posixToMillis time in
-  if time_ - model.lastUpdate >= 10000 then
-      -- updateSquare model
-    --|> movingSnake 
-    updatePlateau model
+  if time_ - model.lastUpdate >= 1000 then
+     updatePlateau model
+    |> movingSnake 
     |> Setters.setTime time_
     |> Setters.setLastUpdate time_
     |> Update.none
@@ -154,21 +163,34 @@ cell index active =
 
 gameCase : Model -> Model
 gameCase model =
-   gameCaseHelper (model.sizeBoard*model.sizeBoard) model
+   gameCaseHelper 0 model
 
 gameCaseHelper : Int -> Model -> Model
 gameCaseHelper taille model = 
-  case taille of
-  0 -> model
-  nombre -> let cellGame = cell 1 model.coloredSquare in
-            gameCaseHelper (taille-1) {model | cellsBoard = cellGame::model.cellsBoard}
+ let cellGame = {x= modBy 40 taille,y= taille//40,coloredSquare=0} in
+ if taille < model.sizeBoard*model.sizeBoard then gameCaseHelper (taille+1) {model | cellsBoard = cellGame::model.cellsBoard}
+  else model
+ 
 
+showPlateau : Model -> List (Html Msg)
+showPlateau model =
+  showPlateauHelp model.cellsBoard [] 
+
+showPlateauHelp : List Cellule -> List (Html Msg) -> List (Html Msg)  
+showPlateauHelp cellsBoard acc =
+  case cellsBoard of
+  [] -> acc
+  (head::tail) ->
+     let cellColor = cell 1 1 in
+     let noCellColor = cell 0 1 in
+     if head.coloredSquare == 1 then showPlateauHelp tail (cellColor::acc)
+        else showPlateauHelp tail (noCellColor::acc)
   
 
 boardInit : Model -> Html Msg
 boardInit model =
   Html.div[Attributes.class "grid"]
-    (model.cellsBoard)
+    (showPlateau model)
 
 actualTime : Model -> Html Msg
 actualTime { time } =
