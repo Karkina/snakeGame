@@ -30,7 +30,7 @@ code {
 }
 
 main {
-  max-width: 800px;
+  max-width: 750px;
   margin: 0 auto;
   background: #f5f5f5;
   padding: 24px;
@@ -49,21 +49,32 @@ img {
   max-width: 200px;
 }
 
+.gridGame {
+  display: grid;
+  width: 200px;
+  height: 15px;
+  gap: 0px;
+  /*grid-template-rows: repeat(3, 1fr);*/
+  grid-template-columns: repeat(9, 1fr);
+  border: 0.5px solid #888;
+  background: white;
+}
+
 .grid {
   display: grid;
-  width: 300px;
-  height: 300px;
-  gap: 24px;
-  grid-template-rows: repeat(2, 1fr);
-  grid-template-columns: repeat(2, 1fr);
-  border: 2px solid #888;
-  padding: 24px;
+  width: 700px;
+  height: 700px;
+  gap: 0px;
+  grid-template-rows: repeat(40, 1fr);
+  grid-template-columns: repeat(40, 1fr);
+  border: 4px solid #888;
+  padding: 0px;
   margin: 24px auto;
   background: white;
 }
 
 .cell {
-  border: 2px solid #888;
+  border: 1px solid #888;
   background: #f5f5f5;
 }
 
