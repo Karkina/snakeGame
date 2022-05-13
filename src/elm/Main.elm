@@ -20,25 +20,21 @@ type Direction = Up
 type alias Snake = { positions : List Int,
                     direction : Direction
                   }
-type alias Cellule = { x : Int
-                      ,y : Int
-                      , coloredSquare : Int
-                  }
+
 
 type alias Model =
   { gameStarted : Bool
   , lastUpdate : Int
   , time : Int
-  , cellsBoard : List (Cellule)
   , sizeBoard : Int
   , player : Snake
+  , score : Int
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time [] 40 (Snake [251,252,253] Up)
-  |> gameCase 
+  |> \time -> Model False time time 40 (Snake [40,41,42] Down) 10
   |> Update.none
 
 {-| All your messages should go there -}
@@ -88,34 +84,56 @@ movingSnake model =
 
   movingSnakeHelp model (List.reverse(model.player.positions))
 
+
 movingSnakeHelp : Model -> List Int -> Model
 movingSnakeHelp model snakePositions=
   case (model.player.direction,snakePositions) of
     (Down,head::tail) -> let snake = (head+40)::List.take (List.length snakePositions-1) snakePositions in
                        let updateSnake = {positions = List.reverse snake ,direction=Down} in
-                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
+                       let debugTest = Debug.log "Taille Serpent"  model.player in
                        { model | player = updateSnake}
     (Up,head::tail) -> let snake = (head-40)::List.take (List.length snakePositions-1) snakePositions in
                        let updateSnake = {positions = List.reverse snake ,direction=Up} in
-                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
+                       let debugTest = Debug.log "Taille Serpent" model.player in
                        { model | player = updateSnake}
 
     (Left,head::tail) -> let snake = (head-1)::List.take (List.length snakePositions-1) snakePositions in
                        let updateSnake = {positions = List.reverse snake ,direction=Left} in
-                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
+                       let debugTest = Debug.log "Taille Serpent"  model.player in
                        { model | player = updateSnake}
     (Right,head::tail) -> let snake = (head+1)::List.take (List.length snakePositions-1) snakePositions in
                        let updateSnake = {positions = List.reverse snake ,direction=Right} in
-                       let debugTest = Debug.log "Taille Serpent"  snakePositions in
+                       let debugTest = Debug.log "Taille Serpent"  model.player in
                        { model | player = updateSnake}
             
     (_,[]) -> model
 
+thoriqueSnake : Model -> Model
+thoriqueSnake model =
+  thoriqueSnakeHelp model model.player
 
+thoriqueSnakeHelp : Model -> Snake -> Model
+thoriqueSnakeHelp model snake =
+  case (List.reverse snake.positions,snake.direction) of 
+  ([],_)-> model
+  (head::tail,Up) ->
+     let newPos = Debug.log "Thorique " ((model.sizeBoard*model.sizeBoard)-(model.sizeBoard-head))in 
+     let updateSnake = {positions=List.reverse (newPos::tail),direction=Up} in
+     if head//model.sizeBoard == 0 then {model | player = updateSnake }
+     else model
+  (head::tail,Right) ->
+     let newPos = head-(model.sizeBoard-1) in 
+     let updateSnake = {positions=List.reverse (newPos::tail),direction=Right} in
+     if ((modBy model.sizeBoard head) == 0) then {model | player = updateSnake }
+     else model
+  (_,_) -> model
+
+{-
 updatePlateau : Model -> Model
 updatePlateau model =
   updatePlateauHelp model (List.reverse model.cellsBoard) model.player.positions (model.sizeBoard*model.sizeBoard) []
-
+-}
+{-
 updatePlateauHelp : Model -> List Cellule -> List Int -> Int ->List Cellule -> Model
 updatePlateauHelp model cellsBoard player count acc=
   case (cellsBoard,player,count) of
@@ -133,7 +151,7 @@ updatePlateauHelp model cellsBoard player count acc=
         let snakeTest = Debug.log "snake:" headSnake in 
         updatePlateauHelp model tail tailSnake (count-1) (darkCell::acc)
      else updatePlateauHelp model tail player (count-1) (lightCell::acc)
-
+-}
   
 
 
@@ -155,7 +173,7 @@ nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let time_ = Time.posixToMillis time in
   if time_ - model.lastUpdate >= 1000 then
-     updatePlateau model
+    thoriqueSnake model
     |> movingSnake 
     |> Setters.setTime time_
     |> Setters.setLastUpdate time_
@@ -179,7 +197,7 @@ cell : Int -> Int -> Html msg
 cell index active =
   let class = if active == index then "cell active" else "cell" in
   Html.div [ Attributes.class class ] []
-
+{-
 gameCase : Model -> Model
 gameCase model =
    gameCaseHelper 0 model
@@ -190,21 +208,20 @@ gameCaseHelper taille model =
  if taille < model.sizeBoard*model.sizeBoard then gameCaseHelper (taille+1) {model | cellsBoard = cellGame::model.cellsBoard}
   else model
  
-
+-}
 showPlateau : Model -> List (Html Msg)
 showPlateau model =
-  showPlateauHelp model.cellsBoard [] 
+  showPlateauHelp (List.reverse(model.player.positions)) (model.sizeBoard*model.sizeBoard) []
 
-showPlateauHelp : List Cellule -> List (Html Msg) -> List (Html Msg)  
-showPlateauHelp cellsBoard acc =
-  case cellsBoard of
-  [] -> acc
-  (head::tail) ->
+showPlateauHelp : List Int -> Int -> List (Html Msg) -> List (Html Msg)  
+showPlateauHelp snake count acc=
+  case (count,snake) of
+  (0,_) -> acc
+  (_,_) ->
      let cellColor = cell 1 1 in
      let noCellColor = cell 0 1 in
-     if head.coloredSquare == 1 then showPlateauHelp tail (cellColor::acc)
-        else showPlateauHelp tail (noCellColor::acc)
-  
+     if List.member count snake then showPlateauHelp snake (count-1) (cellColor::acc)
+        else showPlateauHelp snake (count- 1) (noCellColor::acc)
 
 boardInit : Model -> Html Msg
 boardInit model =
@@ -239,6 +256,7 @@ view : Model -> Html Msg
 view model =
   Html.main_ []
     [ Html.img [ Attributes.src "/logo.svg" ] []
+    , Html.text (String.fromInt model.score)
     , explanations model
     , boardInit model
     ]
