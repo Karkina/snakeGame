@@ -88,25 +88,28 @@ movingSnake model =
 movingSnakeHelp : Model -> List Int -> Model
 movingSnakeHelp model snakePositions=
   case (model.player.direction,snakePositions) of
-    (Down,head::tail) -> let snake = (head+40)::List.take (List.length snakePositions-1) snakePositions in
-                       let updateSnake = {positions = List.reverse snake ,direction=Down} in
-                       let debugTest = Debug.log "Taille Serpent"  model.player in
-                       { model | player = updateSnake}
-    (Up,head::tail) -> let snake = (head-40)::List.take (List.length snakePositions-1) snakePositions in
-                       let updateSnake = {positions = List.reverse snake ,direction=Up} in
-                       let debugTest = Debug.log "Taille Serpent" model.player in
-                       { model | player = updateSnake}
+    (Down,head::tail) -> if head//model.sizeBoard == 0 then thoriqueSnake model
+                         else  updateSnakeModel 40 model snakePositions
+    (Up,head::tail) -> if head//model.sizeBoard == 0 then thoriqueSnake model
+                         else  updateSnakeModel 40 model snakePositions
 
-    (Left,head::tail) -> let snake = (head-1)::List.take (List.length snakePositions-1) snakePositions in
-                       let updateSnake = {positions = List.reverse snake ,direction=Left} in
-                       let debugTest = Debug.log "Taille Serpent"  model.player in
-                       { model | player = updateSnake}
-    (Right,head::tail) -> let snake = (head+1)::List.take (List.length snakePositions-1) snakePositions in
-                       let updateSnake = {positions = List.reverse snake ,direction=Right} in
-                       let debugTest = Debug.log "Taille Serpent"  model.player in
-                       { model | player = updateSnake}
+    (Left,head::tail) -> if ((modBy model.sizeBoard head) == 1) then thoriqueSnake model
+                         else  updateSnakeModel  -1 model snakePositions
+    (Right,head::tail) ->  if ((modBy model.sizeBoard head) == 0) then thoriqueSnake model
+                           else  updateSnakeModel 1  model snakePositions
             
     (_,[]) -> model
+
+updateSnakeModel :Int -> Model ->List Int -> Model
+updateSnakeModel addSpeed model snakePositions =
+  case snakePositions of
+  [] -> model
+  head::tail -> let snake = (head+addSpeed)::List.take (List.length snakePositions-1) snakePositions in
+    let newSnake = {positions = List.reverse snake ,direction=model.player.direction} in
+    let debugTest = Debug.log "Taille Serpent"  model.player in
+    { model | player = newSnake}
+
+
 
 thoriqueSnake : Model -> Model
 thoriqueSnake model =
@@ -119,14 +122,23 @@ thoriqueSnakeHelp model snake =
   (head::tail,Up) ->
      let newPos = Debug.log "Thorique " ((model.sizeBoard*model.sizeBoard)-(model.sizeBoard-head))in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Up} in
-     if head//model.sizeBoard == 0 then {model | player = updateSnake }
-     else model
+     {model | player = updateSnake }
+    
   (head::tail,Right) ->
      let newPos = head-(model.sizeBoard-1) in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Right} in
-     if ((modBy model.sizeBoard head) == 0) then {model | player = updateSnake }
-     else model
+     {model | player = updateSnake }
+  (head::tail,Left) ->
+     let newPos = head+(model.sizeBoard-1) in 
+     let updateSnake = {positions=List.reverse (newPos::tail),direction=Left} in
+     {model | player = updateSnake }
   (_,_) -> model
+
+
+indexToPos : Model -> Int -> (Int,Int)
+indexToPos model position =
+  (modBy model.sizeBoard position,position//model.sizeBoard)
+
 
 {-
 updatePlateau : Model -> Model
@@ -173,8 +185,7 @@ nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let time_ = Time.posixToMillis time in
   if time_ - model.lastUpdate >= 1000 then
-    thoriqueSnake model
-    |> movingSnake 
+    movingSnake model
     |> Setters.setTime time_
     |> Setters.setLastUpdate time_
     |> Update.none
