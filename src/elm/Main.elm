@@ -88,10 +88,10 @@ movingSnake model =
 movingSnakeHelp : Model -> List Int -> Model
 movingSnakeHelp model snakePositions=
   case (model.player.direction,snakePositions) of
-    (Down,head::tail) -> if head//model.sizeBoard == 0 then thoriqueSnake model
+    (Down,head::tail) -> if head//model.sizeBoard == model.sizeBoard-1 then thoriqueSnake model
                          else  updateSnakeModel 40 model snakePositions
     (Up,head::tail) -> if head//model.sizeBoard == 0 then thoriqueSnake model
-                         else  updateSnakeModel 40 model snakePositions
+                         else  updateSnakeModel -40 model snakePositions
 
     (Left,head::tail) -> if ((modBy model.sizeBoard head) == 1) then thoriqueSnake model
                          else  updateSnakeModel  -1 model snakePositions
@@ -123,7 +123,11 @@ thoriqueSnakeHelp model snake =
      let newPos = Debug.log "Thorique " ((model.sizeBoard*model.sizeBoard)-(model.sizeBoard-head))in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Up} in
      {model | player = updateSnake }
-    
+  (head::tail,Down) ->
+     let newPos = Debug.log "Thorique " (modBy model.sizeBoard head+1) in 
+     let updateSnake = {positions=List.reverse (newPos::tail),direction=Down} in
+     {model | player = updateSnake }
+      
   (head::tail,Right) ->
      let newPos = head-(model.sizeBoard-1) in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Right} in
@@ -132,7 +136,7 @@ thoriqueSnakeHelp model snake =
      let newPos = head+(model.sizeBoard-1) in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Left} in
      {model | player = updateSnake }
-  (_,_) -> model
+
 
 
 indexToPos : Model -> Int -> (Int,Int)
