@@ -74,8 +74,17 @@ img {
 }
 
 .cell {
-  border: 1px solid #888;
   background: #f5f5f5;
+}
+
+.cellSnake {
+  border: 1px solid #888;
+  background: #0761bc;
+}
+
+.cellPomme{
+  border: 1px solid #888;
+  background: #ff001e;
 }
 
 .active {

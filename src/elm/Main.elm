@@ -28,13 +28,14 @@ type alias Model =
   , time : Int
   , sizeBoard : Int
   , player : Snake
+  , apple : Int
   , score : Int
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 40 (Snake [40,41,42] Down) 10
+  |> \time -> Model False time time 40 (Snake [40,41,42] Down) 350 10
   |> Update.none
 
 {-| All your messages should go there -}
@@ -183,13 +184,18 @@ keyDown key model =
 
 
    -- _ -> Update.none model
+updateScore : Model -> Model
+updateScore model = 
+  {model | score = model.score + 5}
+
 
 
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let time_ = Time.posixToMillis time in
-  if time_ - model.lastUpdate >= 1000 then
+  if time_ - model.lastUpdate >= 500 then
     movingSnake model
+    |> updateScore
     |> Setters.setTime time_
     |> Setters.setLastUpdate time_
     |> Update.none
@@ -208,9 +214,9 @@ update msg model =
     NextFrame time -> nextFrame time model
 
 {-| Manage all your view functions here. -}
-cell : Int -> Int -> Html msg
-cell index active =
-  let class = if active == index then "cell active" else "cell" in
+cell : Int -> Html msg
+cell active =
+  let class = if active == 1 then "cellSnake" else if active==2 then "cellPomme" else "cell" in
   Html.div [ Attributes.class class ] []
 {-
 gameCase : Model -> Model
@@ -226,17 +232,19 @@ gameCaseHelper taille model =
 -}
 showPlateau : Model -> List (Html Msg)
 showPlateau model =
-  showPlateauHelp (List.reverse(model.player.positions)) (model.sizeBoard*model.sizeBoard) []
+  showPlateauHelp model (List.reverse(model.player.positions)) (model.sizeBoard*model.sizeBoard) []
 
-showPlateauHelp : List Int -> Int -> List (Html Msg) -> List (Html Msg)  
-showPlateauHelp snake count acc=
+showPlateauHelp : Model -> List Int -> Int -> List (Html Msg) -> List (Html Msg)  
+showPlateauHelp model snake count acc=
   case (count,snake) of
   (0,_) -> acc
   (_,_) ->
-     let cellColor = cell 1 1 in
-     let noCellColor = cell 0 1 in
-     if List.member count snake then showPlateauHelp snake (count-1) (cellColor::acc)
-        else showPlateauHelp snake (count- 1) (noCellColor::acc)
+     let cellColor = cell 1 in
+     let cellPomme = cell 2 in
+     let noCellColor = cell 0  in
+     if List.member count snake then showPlateauHelp model snake (count-1) (cellColor::acc)
+     else if count==model.apple then showPlateauHelp model snake (count-1) (cellPomme::acc)
+        else showPlateauHelp model snake (count- 1) (noCellColor::acc)
 
 boardInit : Model -> Html Msg
 boardInit model =
