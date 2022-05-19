@@ -199,7 +199,7 @@ keyDown key model =
    -- _ -> Update.none model
 updateScore : Model -> Model
 updateScore model = 
-  {model | score = model.score + 5}
+  {model | score = model.score}
 
 addTail : Model -> Model
 addTail model =
@@ -212,12 +212,15 @@ addTailHelp model snakePositions =
         head :: tail -> let updateSnake = Debug.log "Snake :" {positions=List.reverse((head-1)::snakePositions),direction=model.player.direction} in
                       {model | player = updateSnake }
 
+
+updateApple : Model ->(Model,Cmd Msg)
+updateApple model =
+  if model.apple.isEat then update Roll model
+  else Update.none model
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let time_ = Time.posixToMillis time in
   if time_ - model.lastUpdate >= 250 then
-    if model.apple.isEat then update Roll model
-    else
     -- update Roll model
     --addTail model
     movingSnake model 
@@ -225,7 +228,7 @@ nextFrame time model =
     |> updateScore
     |> Setters.setTime time_
     |> Setters.setLastUpdate time_
-    |> Update.none
+    |> updateApple
   else
     time_
     |> Setters.setTimeIn model
@@ -244,7 +247,7 @@ update msg model =
       , Random.generate NewApple (Random.int 0 (model.sizeBoard*model.sizeBoard))
       )
     NewApple newPosApple ->
-      ( {model | apple ={positions=newPosApple,isEat =False}}
+      ( {model | score = model.score +10,apple ={positions=newPosApple,isEat =False}}
       , Cmd.none
       )
 
