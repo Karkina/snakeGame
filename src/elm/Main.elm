@@ -9,6 +9,7 @@ import Time exposing (Posix)
 import Setters
 import Update
 import Json.Decode as Decode
+import Random
 
 {-| Got from JS side, and Model to modify -}
 type alias Flags = { now : Int }
@@ -21,6 +22,10 @@ type alias Snake = { positions : List Int,
                     direction : Direction
                   }
 
+type alias Apple = { positions : Int,
+                    isEat : Bool
+                  }
+
 
 type alias Model =
   { gameStarted : Bool
@@ -28,23 +33,26 @@ type alias Model =
   , time : Int
   , sizeBoard : Int
   , player : Snake
-  , apple : Int
+  , apple : Apple
   , score : Int
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 40 (Snake [40,41,42] Down) 350 10
+  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 True) 10
   |> Update.none
 
 {-| All your messages should go there -}
 type Key = ArrowUp | ArrowRight | ArrowDown | ArrowLeft | Space
-type Msg
-  = NextFrame Posix
+
+type Msg = NextFrame Posix
   | ToggleGameLoop
   | KeyMovement Direction
   | KeyDown Key
+  | NewApple Int
+  | Roll
+
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct
@@ -79,7 +87,12 @@ directionSnake directionClick model =
              {model | player = snakeUpdate}
              |> Update.none
 
-
+colisionApple : Model -> Model
+colisionApple model =
+  case model.player.positions of
+      []-> model
+      head::tail -> if head == model.apple.positions then {model | apple = {positions = model.apple.positions,isEat=True}}
+                    else model
 movingSnake : Model -> Model
 movingSnake model =
 
@@ -188,13 +201,27 @@ updateScore : Model -> Model
 updateScore model = 
   {model | score = model.score + 5}
 
+addTail : Model -> Model
+addTail model =
+  addTailHelp model (List.reverse(model.player.positions)) 
 
+addTailHelp : Model -> List Int -> Model
+addTailHelp model snakePositions =
+  case snakePositions of
+        []-> model
+        head :: tail -> let updateSnake = Debug.log "Snake :" {positions=List.reverse((head-1)::snakePositions),direction=model.player.direction} in
+                      {model | player = updateSnake }
 
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let time_ = Time.posixToMillis time in
-  if time_ - model.lastUpdate >= 500 then
-    movingSnake model
+  if time_ - model.lastUpdate >= 250 then
+    if model.apple.isEat then update Roll model
+    else
+    -- update Roll model
+    --addTail model
+    movingSnake model 
+    |> colisionApple
     |> updateScore
     |> Setters.setTime time_
     |> Setters.setLastUpdate time_
@@ -212,6 +239,14 @@ update msg model =
     KeyDown key -> keyDown key model
     KeyMovement direction -> directionSnake direction model
     NextFrame time -> nextFrame time model
+    Roll ->
+      ( model
+      , Random.generate NewApple (Random.int 0 (model.sizeBoard*model.sizeBoard))
+      )
+    NewApple newPosApple ->
+      ( {model | apple ={positions=newPosApple,isEat =False}}
+      , Cmd.none
+      )
 
 {-| Manage all your view functions here. -}
 cell : Int -> Html msg
@@ -233,7 +268,12 @@ gameCaseHelper taille model =
 showPlateau : Model -> List (Html Msg)
 showPlateau model =
   showPlateauHelp model (List.reverse(model.player.positions)) (model.sizeBoard*model.sizeBoard) []
-
+{-
+updateApple : Model -> Model
+updateApple model =
+  let randomNumber = (Random.generate (Random.int 50 60)) in
+  {model | apple=randomNumber}
+-}
 showPlateauHelp : Model -> List Int -> Int -> List (Html Msg) -> List (Html Msg)  
 showPlateauHelp model snake count acc=
   case (count,snake) of
@@ -243,7 +283,7 @@ showPlateauHelp model snake count acc=
      let cellPomme = cell 2 in
      let noCellColor = cell 0  in
      if List.member count snake then showPlateauHelp model snake (count-1) (cellColor::acc)
-     else if count==model.apple then showPlateauHelp model snake (count-1) (cellPomme::acc)
+     else if count==model.apple.positions then showPlateauHelp model snake (count-1) (cellPomme::acc)
         else showPlateauHelp model snake (count- 1) (noCellColor::acc)
 
 boardInit : Model -> Html Msg
@@ -280,6 +320,7 @@ view model =
   Html.main_ []
     [ Html.img [ Attributes.src "/logo.svg" ] []
     , Html.text (String.fromInt model.score)
+    , Html.button [ Events.onClick Roll ] [ Html.text "Roll" ]
     , explanations model
     , boardInit model
     ]
