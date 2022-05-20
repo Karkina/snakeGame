@@ -91,7 +91,7 @@ colisionApple : Model -> Model
 colisionApple model =
   case model.player.positions of
       []-> model
-      head::tail -> if head == model.apple.positions then {model | apple = {positions = model.apple.positions,isEat=True}}
+      head::tail -> if head == model.apple.positions then addTail {model | apple = {positions = model.apple.positions,isEat=True}}
                     else model
 movingSnake : Model -> Model
 movingSnake model =
@@ -138,7 +138,7 @@ thoriqueSnakeHelp model snake =
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Up} in
      {model | player = updateSnake }
   (head::tail,Down) ->
-     let newPos = Debug.log "Thorique " (modBy model.sizeBoard head+1) in 
+     let newPos = Debug.log "Thorique " (modBy model.sizeBoard head-1) in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Down} in
      {model | player = updateSnake }
       
