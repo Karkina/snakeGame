@@ -10,6 +10,8 @@ import Setters
 import Update
 import Json.Decode as Decode
 import Random
+import Html.Attributes exposing (type_, checked, value)
+
 
 {-| Got from JS side, and Model to modify -}
 type alias Flags = { now : Int }
@@ -35,12 +37,14 @@ type alias Model =
   , player : Snake
   , apple : Apple
   , score : Int
+  , torique : Bool
+  , gameOver : Bool
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 True) 10
+  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 True) 10 False False
   |> Update.none
 
 {-| All your messages should go there -}
@@ -52,7 +56,8 @@ type Msg = NextFrame Posix
   | KeyDown Key
   | NewApple Int
   | Roll
-
+  | ToriqueActivation
+  | SizeBoard Int
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct
@@ -102,14 +107,14 @@ movingSnake model =
 movingSnakeHelp : Model -> List Int -> Model
 movingSnakeHelp model snakePositions=
   case (model.player.direction,snakePositions) of
-    (Down,head::tail) -> if head//model.sizeBoard == model.sizeBoard-1 then thoriqueSnake model
+    (Down,head::tail) -> if head//model.sizeBoard == model.sizeBoard-1 then toriqueSnake model
                          else  updateSnakeModel 40 model snakePositions
-    (Up,head::tail) -> if head//model.sizeBoard == 0 then thoriqueSnake model
+    (Up,head::tail) -> if head//model.sizeBoard == 0 then toriqueSnake model
                          else  updateSnakeModel -40 model snakePositions
 
-    (Left,head::tail) -> if ((modBy model.sizeBoard head) == 1) then thoriqueSnake model
+    (Left,head::tail) -> if ((modBy model.sizeBoard head) == 1) then toriqueSnake model
                          else  updateSnakeModel  -1 model snakePositions
-    (Right,head::tail) ->  if ((modBy model.sizeBoard head) == 0) then thoriqueSnake model
+    (Right,head::tail) ->  if ((modBy model.sizeBoard head) == 0) then toriqueSnake model
                            else  updateSnakeModel 1  model snakePositions
             
     (_,[]) -> model
@@ -125,20 +130,21 @@ updateSnakeModel addSpeed model snakePositions =
 
 
 
-thoriqueSnake : Model -> Model
-thoriqueSnake model =
-  thoriqueSnakeHelp model model.player
+toriqueSnake : Model -> Model
+toriqueSnake model =
+  if model.torique then toriqueSnakeHelp model model.player 
+  else {model | gameOver = True,player={positions=[],direction=Left}}
 
-thoriqueSnakeHelp : Model -> Snake -> Model
-thoriqueSnakeHelp model snake =
+toriqueSnakeHelp : Model -> Snake -> Model
+toriqueSnakeHelp model snake =
   case (List.reverse snake.positions,snake.direction) of 
   ([],_)-> model
   (head::tail,Up) ->
-     let newPos = Debug.log "Thorique " ((model.sizeBoard*model.sizeBoard)-(model.sizeBoard-head))in 
+     let newPos = Debug.log "torique " ((model.sizeBoard*model.sizeBoard)-(model.sizeBoard-head))in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Up} in
      {model | player = updateSnake }
   (head::tail,Down) ->
-     let newPos = Debug.log "Thorique " (modBy model.sizeBoard head-1) in 
+     let newPos = Debug.log "torique " (modBy model.sizeBoard head-1) in 
      let updateSnake = {positions=List.reverse (newPos::tail),direction=Down} in
      {model | player = updateSnake }
       
@@ -250,6 +256,15 @@ update msg model =
       ( {model | score = model.score +10,apple ={positions=newPosApple,isEat =False}}
       , Cmd.none
       )
+    ToriqueActivation ->
+      ( {model | torique = not model.torique}
+      , Cmd.none
+      )
+    SizeBoard taille ->
+      ( {model | sizeBoard = taille}
+      , Cmd.none
+      )
+
 
 {-| Manage all your view functions here. -}
 cell : Int -> Html msg
@@ -322,8 +337,14 @@ view : Model -> Html Msg
 view model =
   Html.main_ []
     [ Html.img [ Attributes.src "/logo.svg" ] []
-    , Html.text (String.fromInt model.score)
-    , Html.button [ Events.onClick Roll ] [ Html.text "Roll" ]
+    , Html.text (String.fromInt model.score)  
+     ,Html.text "torique Acitivatinon"
+     , Html.input [type_ "checkbox", Events.onClick ToriqueActivation] []
+     , Html.text "Choix de taille : "
+     ,
+      Html.select[][ Html.option[Events.onClick (SizeBoard 20)][Html.text "20"],
+      Html.option[Events.onClick (SizeBoard 40)][Html.text "40"]
+       ,Html.option[Events.onClick (SizeBoard 80)][Html.text "80"]]
     , explanations model
     , boardInit model
     ]
