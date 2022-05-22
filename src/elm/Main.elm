@@ -112,8 +112,8 @@ colisionApple model =
       []-> model
       head::tail -> if head == model.apple.positions then addTail {model | score = model.score+100,apple = {positions = model.apple.positions,isEat=True}}
                     else if head == model.cherry.positions then {model | score = model.score+10,cherry = {positions = model.cherry.positions,isEat=True}}
-                    else if List.member head model.walls.positions then {model | player= Snake [53,54,55] Right, gameOver = True,score=0}
-                    else if List.member head tail then {model | player= Snake [53,54,55] Right, gameOver = True,score=0}
+                    else if List.member head model.walls.positions then {model | player= Snake [] Right, gameOver = True,score=0}
+                    else if List.member head tail then {model | player= Snake [] Right, gameOver = True,score=0}
                     else model
 movingSnake : Model -> Model
 movingSnake model =
