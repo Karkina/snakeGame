@@ -15,7 +15,6 @@ import Bootstrap.CDN as CDN
 import Bootstrap.Button as Button
 import Bootstrap.Badge as Badge
 import Bootstrap.ButtonGroup as ButtonGroup
-import Bootstrap.Modal as Modal
 import Browser.Navigation
 
 
@@ -317,7 +316,7 @@ explanations ({ gameStarted, torique } as model) =
   Html.div [ Attributes.class "separator" ]
     [
       Button.checkboxButton torique [ Button.primary, Button.onClick ToriqueActivation ] [ Html.text "Enable Toric World" ]
-      ,Button.checkboxButton (not model.walls.isActivate) [ Button.primary, Button.onClick RandomWall ] [ Html.text " Enable Obstacles !" ]
+      ,Button.checkboxButton (not model.walls.isActivate) [ Button.primary, Button.onClick RandomWall ] [ Html.text " Enable Obstacles" ]
       , Button.button [ Button.primary, Button.onClick ToggleGameLoop] [ Html.text (String.join " " [word, "game"])]
       , Html.h4 [] [Html.text "Grid size : "]
       ,ButtonGroup.buttonGroup
