@@ -4,7 +4,6 @@ import Browser
 import Browser.Events
 import Html exposing (Html)
 import Html.Attributes as Attributes
-import Html.Events as Events
 import Time exposing (Posix)
 import Setters
 import Update
@@ -55,13 +54,13 @@ type alias Model =
   , torique : Bool
   , gameOver : Bool
   , walls : Walls
-  , modalVisibility : Modal.Visibility
+  , step : Float
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 False) (Apple 500 False) 10 True False (Walls  [200,300,125,126,129,127,130,500,425,960,582,145,131,132] False) Modal.hidden
+  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 False) (Apple 500 False) 0 True False (Walls  [200,300,125,126,129,127,130,500,425,960,582,145,131,132] False) 0
   |> Update.none
 
 {-| All your messages should go there -}
@@ -92,7 +91,7 @@ directionSnake directionClick model =
     (Down,_) -> if model.player.direction /= Up then let snakeUpdate ={positions=model.player.positions,direction=Down} in
              {model | player = snakeUpdate}
              |> Update.none
-             else Update.none model
+              else Update.none model
     (Left,_) -> if model.player.direction /= Right then let snakeUpdate ={positions=model.player.positions,direction=Left} in
              {model | player = snakeUpdate}
              |> Update.none
@@ -100,11 +99,11 @@ directionSnake directionClick model =
     (Right,_) -> if model.player.direction /= Left then let snakeUpdate ={positions=model.player.positions,direction=Right} in
              {model | player = snakeUpdate}
              |> Update.none
-             else Update.none model
+              else Update.none model
     (Up,_) -> if model.player.direction /= Down then let snakeUpdate ={positions=model.player.positions,direction=Up} in
              {model | player = snakeUpdate}
              |> Update.none
-             else Update.none model
+              else Update.none model
 
 colisionApple : Model -> Model
 colisionApple model =
@@ -114,7 +113,7 @@ colisionApple model =
                     else if head == model.cherry.positions then {model | score = model.score+10,cherry = {positions = model.cherry.positions,isEat=True}}
                     else if List.member head model.walls.positions then {model | player= Snake [] Right, gameOver = True,score=0}
                     else if List.member head tail then {model | player= Snake [] Right, gameOver = True,score=0}
-                    else model
+                    else {model | step = model.step+(1/4)}
 movingSnake : Model -> Model
 movingSnake model =
 
@@ -248,7 +247,7 @@ update msg model =
       )
     NewFruit newPosApple ->
       if model.apple.isEat then ({model |apple ={positions=newPosApple,isEat =False}}, Cmd.none)
-      else if model.cherry.isEat then ({model | cherry ={positions=newPosApple,isEat =False}}, Cmd.none)
+      else if model.cherry.isEat || model.step >= 10 then ({model | cherry ={positions=newPosApple,isEat =False}, step=0}, Cmd.none)
       else (model,Cmd.none)
     ToriqueActivation ->
       ( {model | torique = not model.torique}
