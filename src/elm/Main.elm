@@ -24,13 +24,20 @@ type alias Flags = { now : Int }
 type Direction = Up
   | Down
   | Left
-  | Right 
+  | Right
+
+type Fruit = Pomme
+  | Cerise  
 type alias Snake = { positions : List Int,
                     direction : Direction
                   }
 
 type alias Apple = { positions : Int,
                     isEat : Bool
+                  }
+
+type alias Walls = { positions : List Int,
+                    isActivate : Bool
                   }
 
 
@@ -41,15 +48,17 @@ type alias Model =
   , sizeBoard : Int
   , player : Snake
   , apple : Apple
+  , cherry : Apple
   , score : Int
   , torique : Bool
   , gameOver : Bool
+  , walls : Walls
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 True) 10 True False
+  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 False) (Apple 500 False) 10 True False (Walls  [200,300,125,126,129,127,130,500,425,960,582,145,131,132] False)
   |> Update.none
 
 {-| All your messages should go there -}
@@ -59,10 +68,11 @@ type Msg = NextFrame Posix
   | ToggleGameLoop
   | KeyMovement Direction
   | KeyDown Key
-  | NewApple Int
-  | Roll
+  | NewFruit Int
+  | Roll 
   | ToriqueActivation
   | SizeBoard Int
+  | RandomWall
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct
@@ -101,7 +111,9 @@ colisionApple : Model -> Model
 colisionApple model =
   case model.player.positions of
       []-> model
-      head::tail -> if head == model.apple.positions then addTail {model | apple = {positions = model.apple.positions,isEat=True}}
+      head::tail -> if head == model.apple.positions then addTail {model | score = model.score+100,apple = {positions = model.apple.positions,isEat=True}}
+                    else if head == model.cherry.positions then {model | score = model.score+10,cherry = {positions = model.cherry.positions,isEat=True}}
+                    else if List.member head model.walls.positions then {model | player= Snake [53,54,55] Right, gameOver = True,score=0}
                     else model
 movingSnake : Model -> Model
 movingSnake model =
@@ -113,9 +125,9 @@ movingSnakeHelp : Model -> List Int -> Model
 movingSnakeHelp model snakePositions=
   case (model.player.direction,snakePositions) of
     (Down,head::tail) -> if head//model.sizeBoard == model.sizeBoard-1 then toriqueSnake model
-                         else  updateSnakeModel 40 model snakePositions
+                         else  updateSnakeModel model.sizeBoard model snakePositions
     (Up,head::tail) -> if head//model.sizeBoard == 0 then toriqueSnake model
-                         else  updateSnakeModel -40 model snakePositions
+                         else  updateSnakeModel (-model.sizeBoard) model snakePositions
 
     (Left,head::tail) -> if ((modBy model.sizeBoard head) == 1) then toriqueSnake model
                          else  updateSnakeModel  -1 model snakePositions
@@ -138,7 +150,7 @@ updateSnakeModel addSpeed model snakePositions =
 toriqueSnake : Model -> Model
 toriqueSnake model =
   if model.torique then toriqueSnakeHelp model model.player 
-  else {model | gameOver = True,player={positions=[],direction=Left}}
+  else {model | player= Snake [53,54,55] Right, gameOver = True,score=0}
 
 toriqueSnakeHelp : Model -> Snake -> Model
 toriqueSnakeHelp model snake =
@@ -224,8 +236,9 @@ addTailHelp model snakePositions =
 
 updateApple : Model ->(Model,Cmd Msg)
 updateApple model =
-  if model.apple.isEat then update Roll model
-  else Update.none model
+   update Roll model
+
+
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let time_ = Time.posixToMillis time in
@@ -253,12 +266,12 @@ update msg model =
     NextFrame time -> nextFrame time model
     Roll ->
       ( model
-      , Random.generate NewApple (Random.int 0 (model.sizeBoard*model.sizeBoard))
+      , Random.generate NewFruit (Random.int 0 (model.sizeBoard*model.sizeBoard)) 
       )
-    NewApple newPosApple ->
-      ( {model | score = model.score +10,apple ={positions=newPosApple,isEat =False}}
-      , Cmd.none
-      )
+    NewFruit newPosApple ->
+      if model.apple.isEat then ({model |apple ={positions=newPosApple,isEat =False}}, Cmd.none)
+      else if model.cherry.isEat then ({model | cherry ={positions=newPosApple,isEat =False}}, Cmd.none)
+      else (model,Cmd.none)
     ToriqueActivation ->
       ( {model | torique = not model.torique}
       , Cmd.none
@@ -267,12 +280,18 @@ update msg model =
       ( {model | sizeBoard = taille}
       , Cmd.none
       )
+    RandomWall ->
+     ( if model.walls.isActivate then {model | walls = {positions = model.walls.positions,isActivate = not model.walls.isActivate}}
+       else {model | walls = {positions = [],isActivate = not model.walls.isActivate}}
+      , Cmd.none
+      )
+
 
 
 {-| Manage all your view functions here. -}
 cell : Int -> Html msg
 cell active =
-  let class = if active == 1 then "cellSnake" else if active==2 then "cellPomme" else "cell" in
+  let class = if active == 1 then "cellSnake" else if active==2 then "cellPomme" else if active==3 then "cellChery" else if active == 4 then "cellWall" else "cell" in
   Html.div [ Attributes.class class ] []
 {-
 gameCase : Model -> Model
@@ -302,15 +321,21 @@ showPlateauHelp model snake count acc=
   (_,_) ->
      let cellColor = cell 1 in
      let cellPomme = cell 2 in
+     let cellCherry = cell 3 in
+
+     let cellWall = cell 4 in
      let noCellColor = cell 0  in
+
      if List.member count snake then showPlateauHelp model snake (count-1) (cellColor::acc)
+     else if count == model.cherry.positions then showPlateauHelp model snake (count-1) (cellCherry::acc)
      else if count==model.apple.positions then showPlateauHelp model snake (count-1) (cellPomme::acc)
+     else if List.member count model.walls.positions then showPlateauHelp model snake (count-1) (cellWall::acc)
         else showPlateauHelp model snake (count- 1) (noCellColor::acc)
 
 boardInit : Model -> Html Msg
 boardInit model =
   Html.div[Attributes.class "grid"
-  , Attributes.style "grid-template-rows" (String.join "" ["repeat(",String.fromInt model.sizeBoard, ",auto)"])
+  , Attributes.style "grid-template-rows" (String.join "" ["repeat(", String.fromInt  model.sizeBoard, ",auto)"])
   , Attributes.style "grid-template-columns" (String.join "" ["repeat(",String.fromInt model.sizeBoard, ",auto)"])
   ]
     (showPlateau model)
@@ -332,7 +357,8 @@ explanations ({ gameStarted, torique } as model) =
   Html.div [ Attributes.class "separator" ]
     [
       Button.checkboxButton torique [ Button.primary, Button.onClick ToriqueActivation ] [ Html.text "Enable Toric World" ]
-      , Button.button [ Button.primary, Button.onClick ToggleGameLoop] [ Html.text (String.join " " [word, "game loop"])]
+      ,Button.checkboxButton model.walls.isActivate [ Button.primary, Button.onClick RandomWall ] [ Html.text " Enable Obstacles !" ]
+      , Button.button [ Button.primary, Button.onClick ToggleGameLoop] [ Html.text (String.join " " [word, "game"])]
       , Html.h4 [] [Html.text "Grid size : "]
       ,ButtonGroup.buttonGroup
       [ ButtonGroup.large ]

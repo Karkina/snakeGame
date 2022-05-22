@@ -94,9 +94,20 @@ img {
   background: #0761bc;
 }
 
+.cellWall {
+  border: 1px solid #888;
+  background: #15110a;
+}
+
 .cellPomme{
   border: 1px solid #888;
   background: #ff001e;
+}
+
+.cellChery{
+  border: 1px solid #888;
+  background: #e60dd7;
+  /*background-image: url("cherry.jpg");*/
 }
 
 .active {
