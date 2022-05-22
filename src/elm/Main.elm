@@ -89,18 +89,22 @@ toggleGameLoop ({ gameStarted } as model) =
 directionSnake : Direction -> Model -> (Model,Cmd Msg)
 directionSnake directionClick model =
   case (directionClick,model.player.direction) of
-    (Down,_) -> let snakeUpdate ={positions=model.player.positions,direction=Down} in
+    (Down,_) -> if model.player.direction /= Up then let snakeUpdate ={positions=model.player.positions,direction=Down} in
              {model | player = snakeUpdate}
              |> Update.none
-    (Left,_) -> let snakeUpdate ={positions=model.player.positions,direction=Left} in
+             else Update.none model
+    (Left,_) -> if model.player.direction /= Right then let snakeUpdate ={positions=model.player.positions,direction=Left} in
              {model | player = snakeUpdate}
              |> Update.none
-    (Right,_) -> let snakeUpdate ={positions=model.player.positions,direction=Right} in
+              else Update.none model
+    (Right,_) -> if model.player.direction /= Left then let snakeUpdate ={positions=model.player.positions,direction=Right} in
              {model | player = snakeUpdate}
              |> Update.none
-    (Up,_) -> let snakeUpdate ={positions=model.player.positions,direction=Up} in
+             else Update.none model
+    (Up,_) -> if model.player.direction /= Down then let snakeUpdate ={positions=model.player.positions,direction=Up} in
              {model | player = snakeUpdate}
              |> Update.none
+             else Update.none model
 
 colisionApple : Model -> Model
 colisionApple model =
@@ -109,6 +113,7 @@ colisionApple model =
       head::tail -> if head == model.apple.positions then addTail {model | score = model.score+100,apple = {positions = model.apple.positions,isEat=True}}
                     else if head == model.cherry.positions then {model | score = model.score+10,cherry = {positions = model.cherry.positions,isEat=True}}
                     else if List.member head model.walls.positions then {model | player= Snake [53,54,55] Right, gameOver = True,score=0}
+                    else if List.member head tail then {model | player= Snake [53,54,55] Right, gameOver = True,score=0}
                     else model
 movingSnake : Model -> Model
 movingSnake model =
