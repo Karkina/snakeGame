@@ -16,6 +16,8 @@ import Bootstrap.CDN as CDN
 import Bootstrap.Button as Button
 import Bootstrap.Badge as Badge
 import Bootstrap.ButtonGroup as ButtonGroup
+import Bootstrap.Modal as Modal
+import Browser.Navigation
 
 
 {-| Got from JS side, and Model to modify -}
@@ -53,12 +55,13 @@ type alias Model =
   , torique : Bool
   , gameOver : Bool
   , walls : Walls
+  , modalVisibility : Modal.Visibility
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 False) (Apple 500 False) 10 True False (Walls  [200,300,125,126,129,127,130,500,425,960,582,145,131,132] False)
+  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 False) (Apple 500 False) 10 True False (Walls  [200,300,125,126,129,127,130,500,425,960,582,145,131,132] False) Modal.hidden
   |> Update.none
 
 {-| All your messages should go there -}
@@ -73,17 +76,9 @@ type Msg = NextFrame Posix
   | ToriqueActivation
   | SizeBoard Int
   | RandomWall
+  | ReloadBtnClicked
 
-{-| Manage all your updates here, from the main update function to each
- -|   subfunction. You can use the helpers in Update.elm to help construct
- -|   Cmds. -}
-{-
-updateSquare : Model -> Model
-updateSquare ({ coloredSquare} as model) =
-  coloredSquare + 1
-  |> modBy 2
-  |> Setters.setColoredSquareIn model
--}
+
 toggleGameLoop : Model -> ( Model, Cmd Msg )
 toggleGameLoop ({ gameStarted } as model) =
   not gameStarted
@@ -150,7 +145,11 @@ updateSnakeModel addSpeed model snakePositions =
 toriqueSnake : Model -> Model
 toriqueSnake model =
   if model.torique then toriqueSnakeHelp model model.player 
-  else {model | player= Snake [53,54,55] Right, gameOver = True,score=0}
+  else {model | player= Snake [] Right, gameOver = True,score=0}
+
+gameOver : Html Msg
+gameOver = 
+  Html.div [ ] []
 
 toriqueSnakeHelp : Model -> Snake -> Model
 toriqueSnakeHelp model snake =
@@ -180,32 +179,6 @@ indexToPos : Model -> Int -> (Int,Int)
 indexToPos model position =
   (modBy model.sizeBoard position,position//model.sizeBoard)
 
-
-{-
-updatePlateau : Model -> Model
-updatePlateau model =
-  updatePlateauHelp model (List.reverse model.cellsBoard) model.player.positions (model.sizeBoard*model.sizeBoard) []
--}
-{-
-updatePlateauHelp : Model -> List Cellule -> List Int -> Int ->List Cellule -> Model
-updatePlateauHelp model cellsBoard player count acc=
-  case (cellsBoard,player,count) of
-  (_,_,0) -> {model| cellsBoard =  acc}
-  ([],_,_) -> {model| cellsBoard = acc}
-  (head::tail,[],_) -> 
-                    let newCell = {x = head.x,y = head.y,coloredSquare=0} in
-                    updatePlateauHelp model tail [] count (newCell::acc)
-  (head::tail,headSnake::tailSnake,_) ->
-     let index = head.x + head.y*40 in
-     let darkCell = {x = head.x,y = head.y,coloredSquare=1} in
-     let lightCell = {x = head.x,y = head.y,coloredSquare=0} in
-     if headSnake == index then 
-        let hello = Debug.log "index :" index in
-        let snakeTest = Debug.log "snake:" headSnake in 
-        updatePlateauHelp model tail tailSnake (count-1) (darkCell::acc)
-     else updatePlateauHelp model tail player (count-1) (lightCell::acc)
--}
-  
 
 keyDown : Key -> Model -> ( Model, Cmd Msg )
 keyDown key model =
@@ -285,35 +258,18 @@ update msg model =
        else {model | walls = {positions = [],isActivate = not model.walls.isActivate}}
       , Cmd.none
       )
-
-
+    ReloadBtnClicked -> (model, Browser.Navigation.reload)
 
 {-| Manage all your view functions here. -}
 cell : Int -> Html msg
 cell active =
   let class = if active == 1 then "cellSnake" else if active==2 then "cellPomme" else if active==3 then "cellChery" else if active == 4 then "cellWall" else "cell" in
   Html.div [ Attributes.class class ] []
-{-
-gameCase : Model -> Model
-gameCase model =
-   gameCaseHelper 0 model
 
-gameCaseHelper : Int -> Model -> Model
-gameCaseHelper taille model = 
- let cellGame = {x= modBy 40 taille,y= taille//40,coloredSquare=0} in
- if taille < model.sizeBoard*model.sizeBoard then gameCaseHelper (taille+1) {model | cellsBoard = cellGame::model.cellsBoard}
-  else model
- 
--}
 showPlateau : Model -> List (Html Msg)
 showPlateau model =
   showPlateauHelp model (List.reverse(model.player.positions)) (model.sizeBoard*model.sizeBoard) []
-{-
-updateApple : Model -> Model
-updateApple model =
-  let randomNumber = (Random.generate (Random.int 50 60)) in
-  {model | apple=randomNumber}
--}
+
 showPlateauHelp : Model -> List Int -> Int -> List (Html Msg) -> List (Html Msg)  
 showPlateauHelp model snake count acc=
   case (count,snake) of
@@ -335,8 +291,8 @@ showPlateauHelp model snake count acc=
 boardInit : Model -> Html Msg
 boardInit model =
   Html.div[Attributes.class "grid"
-  , Attributes.style "grid-template-rows" (String.join "" ["repeat(", String.fromInt  model.sizeBoard, ",auto)"])
-  , Attributes.style "grid-template-columns" (String.join "" ["repeat(",String.fromInt model.sizeBoard, ",auto)"])
+  , Attributes.style "grid-template-rows" (String.join "" ["repeat(", String.fromInt  model.sizeBoard, ",1fr)"])
+  , Attributes.style "grid-template-columns" (String.join "" ["repeat(",String.fromInt model.sizeBoard, ",1fr)"])
   ]
     (showPlateau model)
 
@@ -357,7 +313,7 @@ explanations ({ gameStarted, torique } as model) =
   Html.div [ Attributes.class "separator" ]
     [
       Button.checkboxButton torique [ Button.primary, Button.onClick ToriqueActivation ] [ Html.text "Enable Toric World" ]
-      ,Button.checkboxButton model.walls.isActivate [ Button.primary, Button.onClick RandomWall ] [ Html.text " Enable Obstacles !" ]
+      ,Button.checkboxButton (not model.walls.isActivate) [ Button.primary, Button.onClick RandomWall ] [ Html.text " Enable Obstacles !" ]
       , Button.button [ Button.primary, Button.onClick ToggleGameLoop] [ Html.text (String.join " " [word, "game"])]
       , Html.h4 [] [Html.text "Grid size : "]
       ,ButtonGroup.buttonGroup
@@ -373,8 +329,8 @@ view : Model -> Html Msg
 view model =
   Grid.containerFluid []
       [ CDN.stylesheet
-        , Grid.row [  ]
-        [ Grid.col [  ]
+        , Grid.row [ ]
+        [ Grid.col [ ]
             [ boardInit model ]
         , Grid.col [ ]
             [ Html.div [Attributes.class "card" ] [
@@ -383,7 +339,10 @@ view model =
                 , Html.hr [][]
                 , explanations model
                 , Html.hr [][]
-                , Badge.pillInfo [ ] [Html.h1 [] [Html.text (String.join " " ["Score : ",(String.fromInt model.score)])]]
+                , Badge.pillInfo [] [Html.h1 [] [Html.text (String.join " " ["Score : ",(String.fromInt model.score)])]]
+                , Html.hr [Attributes.hidden (not model.gameOver)][]
+                , Badge.badgeDanger [ Attributes.hidden (not model.gameOver) ] [Html.h1 [] [Html.text "GAME OVER"]]
+                , Html.div [Attributes.hidden (not model.gameOver)] [Html.br [][], Button.button [ Button.small, Button.warning, Button.onClick ReloadBtnClicked] [ Html.text "Reset"]]
             ]
           ]
         ]
