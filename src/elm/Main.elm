@@ -281,7 +281,7 @@ update msg model =
       , Cmd.none
       )
     RandomWall ->
-     ( if model.walls.isActivate then {model | walls = {positions = model.walls.positions,isActivate = not model.walls.isActivate}}
+     ( if model.walls.isActivate then {model | walls = {positions = [200,300,125,126,129,127,130,500,425,960,582,145,131,132],isActivate = not model.walls.isActivate}}
        else {model | walls = {positions = [],isActivate = not model.walls.isActivate}}
       , Cmd.none
       )
