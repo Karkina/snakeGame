@@ -10,7 +10,12 @@ import Setters
 import Update
 import Json.Decode as Decode
 import Random
-import Html.Attributes exposing (type_, checked, value)
+--import Html.Attributes exposing (.., type_)
+import Bootstrap.Grid as Grid
+import Bootstrap.CDN as CDN
+import Bootstrap.Button as Button
+import Bootstrap.Badge as Badge
+import Bootstrap.ButtonGroup as ButtonGroup
 
 
 {-| Got from JS side, and Model to modify -}
@@ -44,7 +49,7 @@ type alias Model =
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 True) 10 False False
+  |> \time -> Model False time time 40 (Snake [53,54,55] Right) (Apple 350 True) 10 True False
   |> Update.none
 
 {-| All your messages should go there -}
@@ -190,8 +195,6 @@ updatePlateauHelp model cellsBoard player count acc=
 -}
   
 
-
-
 keyDown : Key -> Model -> ( Model, Cmd Msg )
 keyDown key model =
   case Debug.log "key" key of
@@ -306,7 +309,10 @@ showPlateauHelp model snake count acc=
 
 boardInit : Model -> Html Msg
 boardInit model =
-  Html.div[Attributes.class "grid"]
+  Html.div[Attributes.class "grid"
+  , Attributes.style "grid-template-rows" (String.join "" ["repeat(",String.fromInt model.sizeBoard, ",auto)"])
+  , Attributes.style "grid-template-columns" (String.join "" ["repeat(",String.fromInt model.sizeBoard, ",auto)"])
+  ]
     (showPlateau model)
 
 actualTime : Model -> Html Msg
@@ -321,33 +327,42 @@ actualTime { time } =
     ]
 
 explanations : Model -> Html Msg
-explanations ({ gameStarted } as model) =
+explanations ({ gameStarted, torique } as model) =
   let word = if gameStarted then "Stop" else "Start" in
   Html.div [ Attributes.class "separator" ]
-    [ Html.h1 []
-      [ Html.text "Welcome to the snake project!" ]
-    , actualTime model
-    , Html.button
-      [ Events.onClick ToggleGameLoop, Attributes.class "btn" ]
-      [ Html.text (String.join " " [word, "game loop"]) ]
+    [
+      Button.checkboxButton torique [ Button.primary, Button.onClick ToriqueActivation ] [ Html.text "Enable Toric World" ]
+      , Button.button [ Button.primary, Button.onClick ToggleGameLoop] [ Html.text (String.join " " [word, "game loop"])]
+      , Html.h4 [] [Html.text "Grid size : "]
+      ,ButtonGroup.buttonGroup
+      [ ButtonGroup.large ]
+      [ ButtonGroup.button [ Button.outlineDark, Button.onClick (SizeBoard 20) ] [ Html.text "20" ]
+      , ButtonGroup.button [ Button.secondary, Button.onClick (SizeBoard 40) ] [ Html.text "40" ]
+      , ButtonGroup.button [ Button.dark, Button.onClick (SizeBoard 60) ] [ Html.text "60" ]
+      ]
     ]
 
 {-| Main view functions, composing all functions in one -}
 view : Model -> Html Msg
 view model =
-  Html.main_ []
-    [ Html.img [ Attributes.src "/logo.svg" ] []
-    , Html.text (String.fromInt model.score)  
-     ,Html.text "torique Acitivatinon"
-     , Html.input [type_ "checkbox", Events.onClick ToriqueActivation] []
-     , Html.text "Choix de taille : "
-     ,
-      Html.select[][ Html.option[Events.onClick (SizeBoard 20)][Html.text "20"],
-      Html.option[Events.onClick (SizeBoard 40)][Html.text "40"]
-       ,Html.option[Events.onClick (SizeBoard 80)][Html.text "80"]]
-    , explanations model
-    , boardInit model
-    ]
+  Grid.containerFluid []
+      [ CDN.stylesheet
+        , Grid.row [  ]
+        [ Grid.col [  ]
+            [ boardInit model ]
+        , Grid.col [ ]
+            [ Html.div [Attributes.class "card" ] [
+                Html.img [ Attributes.src "/snakepixel.png" ] []
+                , Html.h1 [] [ Html.text "Snake, the retro game" ]
+                , Html.hr [][]
+                , explanations model
+                , Html.hr [][]
+                , Badge.pillInfo [ ] [Html.h1 [] [Html.text (String.join " " ["Score : ",(String.fromInt model.score)])]]
+            ]
+          ]
+        ]
+      ]
+
 
 {-| Parts for the runtime. Get key presses and subscribe to
  -|   requestAnimationFrame for the game loop. You don't have to bother with
